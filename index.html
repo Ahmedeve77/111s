@@ -1,0 +1,398 @@
+
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>تقارير المروجين</title>
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: linear-gradient(135deg, #007BFF, #00C3FF);
+            color: #333;
+            padding: 20px;
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 900px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            margin: auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #007BFF;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 25px;
+        }
+
+        th, td {
+            padding: 12px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+
+        th {
+            background: #007BFF;
+            color: #fff;
+        }
+
+        .totals {
+            margin-top: 15px;
+            font-weight: bold;
+            background: #f1f1f1;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .buttons {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        button {
+            padding: 12px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 8px;
+            background: #007BFF;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        .login-container {
+            max-width: 400px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            margin: 100px auto;
+            text-align: center;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-container" id="loginPage">
+    <h1>تسجيل الدخول</h1>
+    <input type="text" id="username" placeholder="اسم المستخدم">
+    <button onclick="login()">دخول</button>
+</div>
+
+<div class="container hidden" id="reportPage">
+    <div style="text-align: left;">
+        <button onclick="logout()" style="background:red;">تسجيل الخروج</button>
+    </div>
+
+    <h1>تقرير المروجين</h1>
+
+    <label>تاريخ اليوم</label>
+    <input type="date" id="date">
+
+    <label>اسم المروج</label>
+    <input type="text" id="promoter">
+
+    <label>نوع المنتج</label>
+    <input type="text" id="productType">
+
+    <hr>
+    <h3>تفاصيل الحساب الإعلاني</h3>
+
+    <label>اسم الحساب الإعلاني</label>
+    <input type="text" id="adAccount">
+
+    <label>اسم الصفحة</label>
+    <input type="text" id="pageName">
+
+    <label>عدد الرسائل</label>
+    <input type="number" id="messages" value="0">
+
+    <label>عدد الحجوزات</label>
+    <input type="number" id="bookings" value="0">
+
+    <label>الصرف بالدولار</label>
+    <input type="number" id="spend" value="0">
+
+    <div class="buttons">
+<button onclick="sendAllReportsToFirebase()">📤 إرسال التقرير إلى التطبيق الآخر</button>
+        <button onclick="addReport()">إضافة حساب إعلاني</button>
+        <button onclick="exportTable()">تحميل التقرير كصورة</button>
+        
+    </div>
+
+    <table id="reportTable">
+        <thead>
+            <tr>
+                <th>التاريخ</th>
+                <th>اسم المروج</th>
+                <th>نوع المنتج</th>
+                <th>اسم الحساب الإعلاني</th>
+                <th>اسم الصفحة</th>
+                <th>عدد الرسائل</th>
+                <th>عدد الحجوزات</th>
+                <th>الصرف بالدولار</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <div class="totals">
+        مجموع الرسائل: <span id="totalMessages">0</span> |
+        مجموع الحجوزات: <span id="totalBookings">0</span> |
+        مجموع الصرف بالدولار: <span id="totalSpend">0</span>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js">
+    async function sendAllReportsToFirebase() {
+        const table = document.getElementById('reportTable').getElementsByTagName('tbody')[0];
+        const rows = table.getElementsByTagName('tr');
+        const reports = [];
+
+        for (let row of rows) {
+            const cells = Array.from(row.cells).map(td => td.innerText);
+            reports.push(cells);
+        }
+
+        if (reports.length === 0) {
+            alert("لا توجد بيانات لإرسالها.");
+            return;
+        }
+
+        const username = localStorage.getItem('loggedIn') || "anonymous";
+        try {
+            const { db, ref, push, set } = await import('./firebase-config.js');
+            const reportRef = ref(db, 'reports/' + username);
+            await set(reportRef, reports);
+            alert("✅ تم إرسال التقرير إلى Firebase بنجاح.");
+        } catch (err) {
+            console.error(err);
+            alert("❌ فشل في إرسال التقرير إلى Firebase.");
+        }
+    }
+
+</script>
+<script>
+    const allowedUsers = ["ab4TA96H", "ic9hZIIh", "L7wpMhbA", "GMJ3rlo4", "O4cQgnzf", "Hkpp1HGs", "yvKhF6Li", "FSGAFnMc", "1onPA7Ym", "wZiHFvbL", "YDdeo22U", "ka6WIFOe", "xhelGe2v", "kphCXsqq", "ytwWwLv4", "PS8wjiOA", "iOsBNuRo", "rKSuId56", "n5LQIF0U", "fRLT4BT7", "DiCDF9JG", "Z0pOh3WJ", "e1b7NiLk", "yaKMqr9J", "jRuQ2YCU", "nwSSXqFv", "GdDctxAw", "2AdaN9ul", "Jewxkl5i", "2EHEA169", "3q7DqwR7", "5ueF1dza", "yAxEEPek", "uotlRCDA", "9pxhXGoK", "iRl9GIhP", "6O2hCIMU", "zXFICbic", "ECVqB32f", "8Yadb4Gl", "eJOl9hnv", "KxkKpsiX", "6AFJ44Um", "nQLROt3g", "9BtnjYBd", "lGrxGqxl", "QCfCmF20", "UWArOF5S", "4rzVshk7", "IVyvOrkD"];
+
+    let totalMessages = 0, totalBookings = 0, totalSpend = 0;
+
+    function login() {
+        const username = document.getElementById('username').value.trim();
+        if (allowedUsers.includes(username)) {
+            localStorage.setItem('loggedIn', username);
+            showReportPage();
+        } else {
+            alert('اسم المستخدم غير مصرح له بالدخول');
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('loggedIn');
+        location.reload();
+    }
+
+    function showReportPage() {
+        document.getElementById('loginPage').classList.add('hidden');
+        document.getElementById('reportPage').classList.remove('hidden');
+    }
+
+    window.onload = () => {
+        if (allowedUsers.includes(localStorage.getItem('loggedIn'))) showReportPage();
+    };
+
+    
+    function addReport() {
+        const date = document.getElementById('date').value;
+        const promoter = document.getElementById('promoter').value;
+        const productType = document.getElementById('productType').value;
+        const adAccount = document.getElementById('adAccount').value;
+        const pageName = document.getElementById('pageName').value;
+        const messages = parseInt(document.getElementById('messages').value) || 0;
+        const bookings = parseInt(document.getElementById('bookings').value) || 0;
+        const spend = parseFloat(document.getElementById('spend').value) || 0;
+
+        if (!date || !promoter || !productType || !adAccount || !pageName) {
+            alert('يرجى ملء جميع الحقول المطلوبة');
+            return;
+        }
+
+        const reportContainer = document.createElement('div');
+        reportContainer.style.border = '1px solid #ccc';
+        reportContainer.style.borderRadius = '10px';
+        reportContainer.style.padding = '15px';
+        reportContainer.style.marginTop = '25px';
+        reportContainer.style.backgroundColor = '#f9f9f9';
+
+        const header = document.createElement('h3');
+        header.innerText = `اسم المروج: ${promoter} | التاريخ: ${date}`;
+        header.style.color = '#007BFF';
+        header.style.marginBottom = '10px';
+        reportContainer.appendChild(header);
+
+        const table = document.createElement('table');
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th>نوع المنتج</th>
+                    <th>اسم الحساب الإعلاني</th>
+                    <th>اسم الصفحة</th>
+                    <th>عدد الرسائل</th>
+                    <th>عدد الحجوزات</th>
+                    <th>الصرف بالدولار</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>${productType}</td>
+                    <td>${adAccount}</td>
+                    <td>${pageName}</td>
+                    <td>${messages}</td>
+                    <td>${bookings}</td>
+                    <td>${spend.toFixed(2)}</td>
+                </tr>
+            </tbody>
+        `;
+        reportContainer.appendChild(table);
+
+        
+        const oldReports = document.querySelectorAll('.single-report');
+        oldReports.forEach(el => el.remove());
+
+        reportContainer.classList.add('single-report');
+        document.getElementById('reportPage').appendChild(reportContainer);
+    
+
+        totalMessages += messages;
+        totalBookings += bookings;
+        totalSpend += spend;
+
+        document.getElementById('totalMessages').innerText = totalMessages;
+        document.getElementById('totalBookings').innerText = totalBookings;
+        document.getElementById('totalSpend').innerText = totalSpend.toFixed(2);
+
+        // تفريغ الحقول
+        document.getElementById('adAccount').value = '';
+        document.getElementById('pageName').value = '';
+        document.getElementById('messages').value = 0;
+        document.getElementById('bookings').value = 0;
+        document.getElementById('spend').value = 0;
+    }
+function exportTable() {
+        html2canvas(document.getElementById('reportTable')).then(canvas => {
+            const link = document.createElement('a');
+            link.download = 'تقرير.jpg';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+    }
+
+    
+    function sendAllReports() {
+        const table = document.getElementById('reportTable').getElementsByTagName('tbody')[0];
+        const rows = table.getElementsByTagName('tr');
+        const reports = [];
+
+        for (let row of rows) {
+            const cells = Array.from(row.cells).map(td => td.innerText);
+            reports.push(cells);
+        }
+
+        if (reports.length === 0) {
+            alert("لا توجد تقارير لإرسالها.");
+            return;
+        }
+
+        const username = localStorage.getItem('loggedIn');
+        if (!username) {
+            alert("يجب تسجيل الدخول أولاً.");
+            return;
+        }
+
+        localStorage.setItem(username, JSON.stringify(reports));
+        alert("✅ تم إرسال التقرير بنجاح.");
+    }
+function exportTable() {
+        html2canvas(document.getElementById('reportTable')).then(canvas => {
+            const link = document.createElement('a');
+            link.download = 'تقرير.jpg';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+    }
+
+    function sendAllReports() {
+        const rows = document.querySelectorAll('#reportTable tbody tr');
+        const reports = Array.from(rows).map(row =>
+            Array.from(row.cells).map(cell => cell.innerText)
+        );
+        const currentUser = localStorage.getItem('loggedIn');
+        if (!currentUser) return alert("لم يتم تسجيل الدخول!");
+        localStorage.setItem(currentUser, JSON.stringify(reports));
+        alert("✅ تم إرسال التقارير بنجاح!");
+    }
+
+    async function sendAllReportsToFirebase() {
+        const table = document.getElementById('reportTable').getElementsByTagName('tbody')[0];
+        const rows = table.getElementsByTagName('tr');
+        const reports = [];
+
+        for (let row of rows) {
+            const cells = Array.from(row.cells).map(td => td.innerText);
+            reports.push(cells);
+        }
+
+        if (reports.length === 0) {
+            alert("لا توجد بيانات لإرسالها.");
+            return;
+        }
+
+        const username = localStorage.getItem('loggedIn') || "anonymous";
+        try {
+            const { db, ref, push, set } = await import('./firebase-config.js');
+            const reportRef = ref(db, 'reports/' + username);
+            await set(reportRef, reports);
+            alert("✅ تم إرسال التقرير إلى Firebase بنجاح.");
+        } catch (err) {
+            console.error(err);
+            alert("❌ فشل في إرسال التقرير إلى Firebase.");
+        }
+    }
+
+</script>
+
+</body>
+</html>
