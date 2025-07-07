@@ -1,12 +1,4 @@
-# إعادة بناء كود الإرسال بالكامل وفق طلبك:
-# ✅ جدول واحد فقط
-# ✅ يظهر فيه كل الحسابات الإعلانية
-# ✅ فيه مجموع الرسائل والحجوزات والصرف
-# ✅ زر "إرسال التقرير" يرسل الجدول إلى Firebase
-# ✅ يحتوي على اسم المروج والتاريخ
-# ✅ التنسيق يظهر كما هو في تطبيق الاستقبال
 
-# إعادة كتابة index.html بالكامل مع المطلوب
 new_sender_html = """
 <!DOCTYPE html>
 <html lang="ar">
@@ -232,15 +224,3 @@ new_sender_html = """
 </script>
 </body>
 </html>
-"""
-
-# حفظ الملف النهائي
-(sender_dir / "index.html").write_text(new_sender_html, encoding="utf-8")
-
-# ضغط مشروع الإرسال بعد إعادة البناء
-final_sender_ready = "/mnt/data/sender-app-النهائي.zip"
-with ZipFile(final_sender_ready, 'w') as zipf:
-    for file in sender_dir.iterdir():
-        zipf.write(file, arcname=file.name)
-
-final_sender_ready
